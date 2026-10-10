@@ -1,3 +1,4 @@
+import { ThreadResearch } from "../loopfarm/ThreadResearch";
 import { useAtomValue } from "@effect/atom-react";
 import { useThreadReportedModelSelection } from "../../state/entities";
 import { UsageLimitRecoveryCard } from "./UsageLimitRecoveryCard";
@@ -1083,6 +1084,7 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
 
   return (
     <View className="flex-1">
+      <ThreadResearch key={selectedThreadKey} environmentId={String(props.environmentId)} threadId={String(props.selectedThread.id)} />
       {showContent ? (
         <View
           style={{ flex: 1 }}

@@ -1,3 +1,13 @@
+# Loopfarm
+
+Loopfarm is a fork of T3 Code for hosted Pi coding sessions and durable research. Upstream T3 documentation follows below; its license and attribution are retained.
+
+The iPhone client uses Loopfarm Google sign-in and automatic hosted workspace pairing. Inside a coding thread, **Open research** starts or revisits that thread's cloud research job. Set a goal, completion criteria, and a round limit; inspect saved findings or pause/resume/stop. Pausing saves the current round before waiting. This initial adapter keeps research findings separate from coding messages. Research execution requires the Loopfarm API and its configured search provider; the Jev completion hook additionally requires funded TypeSafe credentials.
+
+Mobile development uses the `loopfarm` branch. The original T3 repository remains upstream; Loopfarm authentication and cloud integrations are isolated under the mobile `features/loopfarm` directory.
+
+---
+
 # T3 Code
 
 T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).

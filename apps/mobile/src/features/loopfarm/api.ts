@@ -1,14 +1,15 @@
 export type Run = {
-  status: "idle" | "running" | "completed" | "stopped" | "failed"
-  config: { question: string; iterations: number } | null
+  status: "idle" | "paused" | "running" | "completed" | "stopped" | "failed"
+  config: { question: string; iterations: number; completionCriteria?: string } | null
   findings: { iteration: number; text: string; finishedAt: string }[]
+  operation?: { id: string } | null
   error: string | null
 }
 export async function requestRun(
   base: string,
   id: string,
   token: string | null,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   body?: unknown,
   signal?: AbortSignal,
 ): Promise<Run> {
