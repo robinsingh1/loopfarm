@@ -14,6 +14,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { AppText as Text } from "../../components/AppText"
 import { requestRun, type Run } from "./api"
+import { watchRun } from "./watchRun"
 
 const base = Constants.expoConfig?.extra?.loopfarm?.apiUrl as string | undefined
 
@@ -31,12 +32,14 @@ export function ThreadResearch({
   token.current = getToken
   const [id, setId] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   const [run, setRun] = useState<Run | null>(null)
   const [question, setQuestion] = useState("")
   const [criteria, setCriteria] = useState("")
   const [iterations, setIterations] = useState("3")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  const [loadError, setLoadError] = useState("")
   const revision = useRef(0)
   useEffect(() => {
     let cancelled = false
@@ -44,8 +47,10 @@ export function ThreadResearch({
     setId(null)
     setRun(null)
     setError("")
+    setLoadError("")
     setBusy(false)
     setOpen(false)
+    setExpanded(false)
     setQuestion("")
     setCriteria("")
     void Crypto.digestStringAsync(
@@ -64,35 +69,29 @@ export function ThreadResearch({
     }
   }, [environmentId, threadId, userId])
   useEffect(() => {
-    if (!id || !base || !userId || !open) return
-    const controller = new AbortController()
-    let timer: ReturnType<typeof setTimeout>
-    async function refresh() {
-      const current = revision.current
-      try {
-        if (AppState.currentState !== "active") return
-        const next = await requestRun(
-          base!,
-          id!,
-          await token.current(),
-          "GET",
-          undefined,
-          controller.signal,
-        )
-        if (!controller.signal.aborted && current === revision.current) setRun(next)
-      } catch (cause) {
-        if (!controller.signal.aborted && current === revision.current)
-          setError(cause instanceof Error ? cause.message : "Could not load research.")
-      } finally {
-        if (!controller.signal.aborted) timer = setTimeout(refresh, 5000)
-      }
-    }
-    void refresh()
+    if (!id || !base || !userId || busy) return
+    const current = revision.current
+    const watcher = watchRun({
+      load: async (signal) => requestRun(base, id, await token.current(), "GET", undefined, signal),
+      onRun: (next) => {
+        if (current !== revision.current) return
+        setRun(next)
+        setLoadError("")
+      },
+      onError: (cause) => {
+        if (current !== revision.current) return
+        setLoadError(cause instanceof Error ? cause.message : "Could not load research.")
+      },
+    })
+    watcher.setActive(AppState.currentState === "active")
+    const subscription = AppState.addEventListener("change", (state) => {
+      watcher.setActive(state === "active")
+    })
     return () => {
-      controller.abort()
-      clearTimeout(timer)
+      watcher.dispose()
+      subscription.remove()
     }
-  }, [id, userId, open])
+  }, [id, userId, busy, open])
   async function act(method: "POST" | "PATCH" | "DELETE", action?: "pause" | "resume") {
     if (!id || !base || busy) return
     const current = ++revision.current
@@ -139,14 +138,49 @@ export function ThreadResearch({
   )
   return (
     <>
-      <View className="border-border flex-row items-center justify-between border-b px-4 py-2">
-        <Text className="text-foreground-muted">
-          Research
-          {run && run.status !== "idle"
-            ? ` · ${run.status} · ${run.findings.length}/${run.config?.iterations ?? 0}`
-            : ""}
-        </Text>
-        {button("Open research", () => setOpen(true))}
+      <View className="border-border gap-2 border-b px-4 py-2">
+        <View className="flex-row items-center justify-between gap-2">
+          <Text className="text-foreground-muted flex-1">
+            Research
+            {run && run.status !== "idle"
+              ? ` · ${run.status === "completed" ? "limit reached" : run.status} · ${run.findings.length}/${run.config?.iterations ?? 0}`
+              : ""}
+          </Text>
+          {button(run && run.status !== "idle" ? "Details" : "Research loop", () => setOpen(true))}
+        </View>
+        {run && run.status !== "idle" && (
+          <>
+            <Text numberOfLines={2} className="text-foreground">
+              {run.config?.question}
+            </Text>
+            <View className="flex-row flex-wrap gap-2">
+              {run.status === "running" && button("Pause", () => void act("PATCH", "pause"), busy)}
+              {run.status === "paused" && button("Resume", () => void act("PATCH", "resume"), busy)}
+              {run.findings.length > 0 &&
+                button(expanded ? "Hide finding" : "Latest finding", () => setExpanded(!expanded))}
+            </View>
+            {run.status === "paused" && run.operation && (
+              <Text className="text-foreground-muted">
+                Saving the current round before pausing.
+              </Text>
+            )}
+            {expanded && run.findings.length > 0 && (
+              <ScrollView style={{ maxHeight: 180 }} nestedScrollEnabled>
+                <Text className="text-foreground-muted">
+                  Round {run.findings.at(-1)!.iteration}
+                </Text>
+                <Text selectable className="text-foreground">
+                  {run.findings.at(-1)!.text}
+                </Text>
+              </ScrollView>
+            )}
+          </>
+        )}
+        {!!(error || loadError || run?.error) && (
+          <Text accessibilityRole="alert" numberOfLines={2} className="text-foreground">
+            {error || loadError || run?.error}
+          </Text>
+        )}
       </View>
       <Modal
         visible={open}
@@ -172,7 +206,7 @@ export function ThreadResearch({
             This thread's cloud research keeps running when you close the app. Findings are saved
             here separately from coding messages.
           </Text>
-          {!run && !error && <ActivityIndicator />}
+          {!run && !error && !loadError && <ActivityIndicator />}
           {run?.status === "idle" && (
             <>
               <Text className="text-foreground">Goal</Text>
@@ -202,7 +236,8 @@ export function ThreadResearch({
               />
               <Text className="text-foreground-muted">
                 GLM · five minutes between rounds. The iteration limit caps rounds, not dollar
-                spend. Automatic Jev completion checks are not active yet.
+                spend. This research runner stops at its limit; Clef completion checks currently
+                apply to Pi coding chats.
               </Text>
               {button("Start research", () => void act("POST"), busy || !question.trim())}
             </>
@@ -243,9 +278,9 @@ export function ThreadResearch({
             </>
           )}
           {busy && <ActivityIndicator />}
-          {!!(error || run?.error) && (
+          {!!(error || loadError || run?.error) && (
             <Text accessibilityRole="alert" className="text-foreground">
-              {error || run?.error}
+              {error || loadError || run?.error}
             </Text>
           )}
         </ScrollView>
