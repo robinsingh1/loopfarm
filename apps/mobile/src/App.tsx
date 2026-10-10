@@ -1,3 +1,4 @@
+import { LoopfarmShell } from "./features/loopfarm/LoopfarmShell";
 import { PermissionUpdateNotice } from "./components/PermissionUpdateNotice";
 import * as Linking from "expo-linking";
 import * as SplashScreen from "expo-splash-screen";
@@ -39,7 +40,7 @@ void SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 const appLinking = {
-  prefixes: [Linking.createURL("/"), "t3code://", "t3code-dev://", "t3code-preview://"],
+  prefixes: [Linking.createURL("/"), "loopfarm://", "loopfarm-dev://", "loopfarm-preview://"],
   // Keep the compact thread list available beneath a directly opened thread.
   config: { initialRouteName: "Home" },
   filter: shouldHandleAppLink,
@@ -92,7 +93,7 @@ function AppContent() {
                 the system is in dark mode. */}
               <GlobalVoiceInputControl>
                 <IncomingShareProvider>
-                  <Navigation linking={appLinking} theme={navigationTheme} />
+                  <LoopfarmShell><Navigation linking={appLinking} theme={navigationTheme} /></LoopfarmShell>
                 </IncomingShareProvider>
                 <ConfirmDialogHost />
                 <ThreadArrangementHost />

@@ -5,74 +5,29 @@
     "promptToConfigurePushNotifications": false
   },
   "build": {
-    "development": {
-      "corepack": true,
-      "env": {
-        "APP_VARIANT": "development",
-        "NODE_OPTIONS": "--max-old-space-size=4096"
-      },
-      "channel": "development",
-      "developmentClient": true,
-      "distribution": "internal"
-    },
-    "preview": {
-      "corepack": true,
-      "env": {
-        "APP_VARIANT": "preview",
-        "NODE_OPTIONS": "--max-old-space-size=4096"
-      },
-      "channel": "preview",
-      "environment": "preview",
-      "distribution": "internal"
-    },
-    "preview:dev": {
-      "corepack": true,
-      "env": {
-        "APP_VARIANT": "preview",
-        "MOBILE_VERSION_POLICY": "fingerprint",
-        "NODE_OPTIONS": "--max-old-space-size=4096"
-      },
-      "channel": "preview",
-      "environment": "preview",
-      "developmentClient": true,
+    "simulator": {
       "distribution": "internal",
-      "android": {
-        "buildType": "apk"
-      }
-    },
-    "v2-preview": {
-      "extends": "production",
-      "distribution": "store",
-      "channel": "v2-preview",
+      "ios": {
+        "simulator": true
+      },
       "env": {
-        "T3CODE_MOBILE_UPDATES_ENABLED": "0"
+        "APP_VARIANT": "production"
       }
     },
     "production": {
-      "corepack": true,
-      "env": {
-        "APP_VARIANT": "production",
-        "NODE_OPTIONS": "--max-old-space-size=4096"
-      },
+      "distribution": "store",
       "channel": "production",
+      "autoIncrement": true,
       "environment": "production",
-      "autoIncrement": true
+      "env": {
+        "APP_VARIANT": "production"
+      }
     }
   },
   "submit": {
-    "v2-preview": {
-      "extends": "production",
-      "android": {
-        "track": "v2",
-        "releaseStatus": "completed"
-      }
-    },
     "production": {
       "ios": {
-        "ascAppId": "6787819824"
-      },
-      "android": {
-        "track": "internal"
+        "ascAppId": "6821012291"
       }
     }
   }

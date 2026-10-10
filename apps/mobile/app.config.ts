@@ -73,27 +73,27 @@ const RELEASE_ASSETS = {
 
 const VARIANT_CONFIG = {
   development: {
-    appName: "T3 Code Dev",
-    scheme: "t3code-dev",
-    iosBundleIdentifier: "com.t3tools.t3code.dev",
-    androidPackage: "com.t3tools.t3code.dev",
-    relyingParty: "clerk.t3.codes",
+    appName: "Loopfarm Dev",
+    scheme: "loopfarm-dev",
+    iosBundleIdentifier: "com.rebootlabs.loopfarm.dev",
+    androidPackage: "com.rebootlabs.loopfarm.dev",
+    relyingParty: "deciding-frog-3041.clerk.accounts.dev",
     assets: DEVELOPMENT_ASSETS,
   },
   preview: {
-    appName: "T3 Code Preview",
-    scheme: "t3code-preview",
-    iosBundleIdentifier: "com.t3tools.t3code.preview",
-    androidPackage: "com.t3tools.t3code.preview",
-    relyingParty: "clerk.t3.codes",
+    appName: "Loopfarm Preview",
+    scheme: "loopfarm-preview",
+    iosBundleIdentifier: "com.rebootlabs.loopfarm.preview",
+    androidPackage: "com.rebootlabs.loopfarm.preview",
+    relyingParty: "deciding-frog-3041.clerk.accounts.dev",
     assets: PREVIEW_ASSETS,
   },
   production: {
-    appName: "T3 Code",
-    scheme: "t3code",
-    iosBundleIdentifier: "com.t3tools.t3code",
-    androidPackage: "com.t3tools.t3code",
-    relyingParty: "clerk.t3.codes",
+    appName: "Loopfarm",
+    scheme: "loopfarm",
+    iosBundleIdentifier: "com.rebootlabs.loopfarm",
+    androidPackage: "com.rebootlabs.loopfarm",
+    relyingParty: "deciding-frog-3041.clerk.accounts.dev",
     assets: RELEASE_ASSETS,
   },
 } as const;
@@ -134,7 +134,7 @@ const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
       {
         name: "SubscriptionUsage",
         displayName: "Subscription usage",
-        description: "Subscription quotas from your connected T3 Code environments.",
+        description: "Subscription quotas from your connected Loopfarm environments.",
         ios: {
           configuration: {
             title: "Subscription usage",
@@ -185,7 +185,7 @@ const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
       {
         name: "AgentActivity",
         displayName: "Agent Activity",
-        description: "Shows the current state of active T3 Code agents.",
+        description: "Shows the current state of active Loopfarm agents.",
         // Live Activity companion; there is no Android presentation for it.
         android: null,
         ios: { supportedFamilies: ["systemSmall", "systemMedium", "accessoryRectangular"] },
@@ -226,7 +226,7 @@ const sharingPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
 
 const config: ExpoConfig = {
   name: variant.appName,
-  slug: "t3-code",
+  slug: "loopfarm",
   platforms: ["ios", "android"],
   scheme: variant.scheme,
   version: "2.0.0",
@@ -255,7 +255,7 @@ const config: ExpoConfig = {
     // Pin code signing to the T3 Tools team so non-interactive `expo run:ios`
     // does not fall back to a personal team (which cannot sign app groups,
     // Sign in with Apple, or push notification entitlements).
-    appleTeamId: "ARK85ZXQ4Z",
+    appleTeamId: repoEnv.LOOPFARM_APPLE_TEAM_ID,
     associatedDomains: [
       `applinks:${variant.relyingParty}`,
       `webcredentials:${variant.relyingParty}`,
@@ -268,8 +268,8 @@ const config: ExpoConfig = {
         NSAllowsArbitraryLoads: true,
       },
       NSLocalNetworkUsageDescription:
-        "Allow T3 Code to connect to T3 Code servers on your local network or tailnet.",
-      NSPhotoLibraryAddUsageDescription: "Allow T3 Code to save images to your photo library.",
+        "Allow Loopfarm to connect to Loopfarm servers on your local network or tailnet.",
+      NSPhotoLibraryAddUsageDescription: "Allow Loopfarm to save images to your photo library.",
       // "Audio, AirPlay, and Picture in Picture": the browser screen's system
       // picture in picture needs it to start and to stay up outside the app.
       UIBackgroundModes: ["audio"],
@@ -356,8 +356,8 @@ const config: ExpoConfig = {
     ],
     // appleSignIn must be gated here: withoutIosPersonalTeamCapabilities.cjs runs before
     // plugins earlier in this array, so it cannot strip the entitlement Clerk would add.
-    ["@clerk/expo", { theme: "./clerk-theme.json", appleSignIn: !isIosPersonalTeamBuild }],
-    "expo-web-browser",
+    ["@clerk/expo", { theme: "./clerk-theme.json", appleSignIn: false }],
+    "./node_modules/expo-web-browser/app.plugin.js",
     [
       "expo-quick-actions",
       {
@@ -377,7 +377,7 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: "Allow T3 Code to use your microphone for voice input.",
+        microphonePermission: "Allow Loopfarm to use your microphone for voice input.",
         recordAudioAndroid: false,
         enableBackgroundPlayback: false,
         enableBackgroundRecording: false,
@@ -386,7 +386,7 @@ const config: ExpoConfig = {
     [
       "expo-camera",
       {
-        cameraPermission: "Allow T3 Code to access your camera so you can scan pairing QR codes.",
+        cameraPermission: "Allow Loopfarm to access your camera so you can scan pairing QR codes.",
         microphonePermission: false,
         barcodeScannerEnabled: true,
         recordAudioAndroid: false,
@@ -396,12 +396,12 @@ const config: ExpoConfig = {
     [
       "expo-splash-screen",
       {
-        image: variant.assets.splashIcon,
+        image: "./assets/loopfarm.png",
         resizeMode: "contain",
         backgroundColor: "#ffffff",
         imageWidth: 220,
         dark: {
-          image: variant.assets.splashIcon,
+          image: "./assets/loopfarm.png",
           backgroundColor: "#0a0a0a",
         },
         android: {
@@ -494,4 +494,22 @@ const config: ExpoConfig = {
   owner: "pingdotgg",
 };
 
+// Loopfarm owns its branding, account, and release channel.
+config.version = "0.2.0";
+config.icon = "./assets/loopfarm.png";
+config.ios = { ...config.ios, icon: "./assets/loopfarm.png" };
+config.runtimeVersion = { policy: "fingerprint" };
+config.updates = {
+  enabled: true,
+  url: "https://u.expo.dev/" + (repoEnv.LOOPFARM_EAS_PROJECT_ID || "c021b973-569d-412f-a09c-ef80cbf7e1e2"),
+  checkAutomatically: "ON_LOAD",
+  fallbackToCacheTimeout: 0,
+};
+config.extra = { ...config.extra,
+  clerk: { publishableKey: "pk_test_ZGVjaWRpbmctZnJvZy0zMDQxLmNsZXJrLmFjY291bnRzLmRldiQ", jwtTemplate: null },
+  relay: { url: null },
+  loopfarm: { apiUrl: "https://loopfarm.robin-345.workers.dev" },
+  eas: { projectId: repoEnv.LOOPFARM_EAS_PROJECT_ID || "c021b973-569d-412f-a09c-ef80cbf7e1e2" },
+};
+config.owner = repoEnv.LOOPFARM_EXPO_OWNER || "robin";
 export default config;

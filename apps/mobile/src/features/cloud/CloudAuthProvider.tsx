@@ -206,13 +206,13 @@ export function CloudAuthProvider(props: { readonly children: ReactNode }) {
     }
   }, [publishableKey, relayUrl]);
 
-  if (!publishableKey || !relayUrl) {
+  if (!publishableKey) {
     return props.children;
   }
 
   return (
     <ClerkProvider publishableKey={publishableKey} tokenCache={tokenCache}>
-      <CloudAuthBridge>{props.children}</CloudAuthBridge>
+      {relayUrl ? <CloudAuthBridge>{props.children}</CloudAuthBridge> : props.children}
     </ClerkProvider>
   );
 }
