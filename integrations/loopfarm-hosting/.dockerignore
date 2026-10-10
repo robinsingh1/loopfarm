@@ -1,0 +1,7 @@
+*
+!Dockerfile
+!manager.mjs
+!pi-config.mjs
+!jev-extension.ts
+!jev-supervisor.mjs
+!clef-client.mjs

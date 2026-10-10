@@ -2,7 +2,7 @@
 
 Loopfarm is a fork of T3 Code for hosted Pi coding sessions and durable research. Upstream T3 documentation follows below; its license and attribution are retained.
 
-The iPhone client uses Loopfarm Google sign-in and automatic hosted workspace pairing. Inside a coding thread, **Open research** starts or revisits that thread's cloud research job. Set a goal, completion criteria, and a round limit; inspect saved findings or pause/resume/stop. Pausing saves the current round before waiting. This initial adapter keeps research findings separate from coding messages. Research execution requires the Loopfarm API and its configured search provider; the Jev completion hook additionally requires funded TypeSafe credentials.
+The iPhone client uses Loopfarm Google sign-in and automatic hosted workspace pairing. Inside a coding thread, **Open research** starts or revisits that thread's cloud research job. Set a goal, completion criteria, and a round limit; inspect saved findings or pause/resume/stop. Pausing saves the current round before waiting. This initial adapter keeps research findings separate from coding messages. Research execution requires the Loopfarm API and its configured search provider; the hosted coding completion hook uses Cloudflare Clef without TypeSafe credits. See `integrations/loopfarm-hosting` for its implementation.
 
 Mobile development uses the `loopfarm` branch. The original T3 repository remains upstream; Loopfarm authentication and cloud integrations are isolated under the mobile `features/loopfarm` directory.
 

@@ -1,0 +1,22 @@
+{
+  "$schema": "../../../node_modules/wrangler/config-schema.json",
+  "name": "loopfarm-t3",
+  "main": "index.ts",
+  "compatibility_date": "2026-10-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": { "PUBLIC_ORIGIN": "https://loopfarm-t3.robin-345.workers.dev" },
+  "ai": { "binding": "AI" },
+  "containers": [
+    {
+      "class_name": "T3Workspace",
+      "image": "./Dockerfile",
+      "instance_type": "standard-1",
+      "max_instances": 1,
+    },
+  ],
+  "durable_objects": { "bindings": [{ "name": "WORKSPACES", "class_name": "T3Workspace" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["T3Workspace"] }],
+  "r2_buckets": [{ "binding": "BACKUPS", "bucket_name": "loopfarm-workspaces" }],
+}
