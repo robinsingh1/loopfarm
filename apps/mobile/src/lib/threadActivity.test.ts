@@ -2596,3 +2596,38 @@ describe("MCP apps", () => {
     expect(feed("running").some((candidate) => candidate.type === "mcp-app")).toBe(false);
   });
 });
+
+it("keeps Clef decisions visible after a completed turn's work log collapses", () => {
+  const decision: OrchestrationV2TurnItem = {
+    ...base("clef-verdict", "2026-06-20T00:00:05.000Z", 4),
+    type: "dynamic_tool",
+    toolName: "notify",
+    title: "notify",
+    input: {
+      message: "Clef decision: complete\nThe outcome is verified. No further work is queued.",
+    },
+  };
+  const feed = buildThreadFeed([
+    projected(userMessage(), 0),
+    projected(command("2026-06-20T00:00:02.000Z"), 1),
+    projected(assistantMessage("2026-06-20T00:00:04.000Z"), 2),
+    projected(decision, 3),
+  ]);
+  const presented = deriveThreadFeedPresentation(
+    feed,
+    {
+      runId,
+      status: "completed",
+      startedAt: "2026-06-20T00:00:01.000Z",
+      completedAt: "2026-06-20T00:00:06.000Z",
+    },
+    new Set(),
+  );
+  const visible = presented
+    .filter((entry) => entry.type === "activity-group")
+    .flatMap((entry) => entry.activities);
+  expect(visible.some((activity) => activity.projectedItem.item.id === decision.id)).toBe(true);
+  expect(
+    visible.find((activity) => activity.projectedItem.item.id === decision.id)?.prominent,
+  ).toBe(true);
+});

@@ -1,3 +1,4 @@
+import { clefDecisionFromItem } from "./toolPresentation";
 import { describe, expect, it } from "@effect/vitest";
 
 import { extractToolActivityPresentation } from "./toolPresentation.ts";
@@ -103,5 +104,24 @@ describe("extractToolActivityPresentation", () => {
         },
       }),
     ).toEqual({});
+  });
+});
+
+describe("Clef decisions", () => {
+  it("recognizes only decision notifications and retains the explanation", () => {
+    const item = {
+      type: "dynamic_tool",
+      toolName: "notify",
+      input: { message: "Clef decision: verify\nRun checks.\nDecision score: 85%." },
+    };
+    expect(clefDecisionFromItem(item)).toEqual({
+      action: "verify",
+      explanation: "Run checks.\nDecision score: 85%.",
+    });
+    expect(clefDecisionFromItem({ ...item, toolName: "bash" })).toBeNull();
+    expect(
+      clefDecisionFromItem({ ...item, input: { message: "Clef decision: unknown\nWrong" } }),
+    ).toBeNull();
+    expect(clefDecisionFromItem(null)).toBeNull();
   });
 });

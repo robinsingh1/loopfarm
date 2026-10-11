@@ -1,4 +1,4 @@
-// Jev judges evidence; Pi and its subagents perform the actual work.
+// Clef judges evidence; Pi and its subagents perform the actual work.
 export const judgment = {
   action: {
     type: "choice",
@@ -66,10 +66,18 @@ export function installSupervisor(pi, client) {
     if (!assistant || ["aborted", "error"].includes(assistant.stopReason)) return
     if (!client.isConfigured()) {
       record("unconfigured")
+      ctx.ui.notify(
+        "Clef decision: paused\nThe decision service is not configured. Automatic follow-ups are paused.",
+        "warning",
+      )
       return
     }
     if (attempts >= 4) {
       record("paused: follow-up limit reached")
+      ctx.ui.notify(
+        "Clef decision: paused\nThe four-follow-up limit was reached. Review the work and send a new instruction to continue.",
+        "warning",
+      )
       return
     }
     const current = generation
@@ -96,6 +104,28 @@ export function installSupervisor(pi, client) {
       if (!["continue", "verify", "complete", "blocked"].includes(action))
         throw new Error("Invalid judgment")
       record(action)
+      const confidence = result.answers.action.confidence
+      const uncertain = Number.isFinite(confidence) && confidence < 0.6
+      const explanations = {
+        continue: "Required work remains. Pi will take the next step automatically.",
+        verify:
+          "Validation is missing. Pi will run checks before deciding whether the task is complete.",
+        complete:
+          "The requested outcome and appropriate validation are evidenced. No further automatic work is queued.",
+        blocked:
+          "User input or an external dependency is needed. No automatic follow-up is queued.",
+      }
+      const label = uncertain ? "paused" : action
+      const explanation = uncertain
+        ? "Clef's decision score is below the 60% threshold. Review the evidence and give Pi the next instruction."
+        : explanations[action]
+      const score = Number.isFinite(confidence)
+        ? `\nDecision score: ${Math.round(confidence * 100)}%.`
+        : ""
+      ctx.ui.notify(
+        `Clef decision: ${label}\n${explanation}${score}\nAutomatic follow-ups: ${attempts + (prompts[action] ? 1 : 0)}/4.`,
+        action === "blocked" ? "warning" : "info",
+      )
       if (prompts[action]) {
         attempts++
         pi.sendUserMessage(prompts[action], { deliverAs: "followUp" })
@@ -104,7 +134,7 @@ export function installSupervisor(pi, client) {
       // An unavailable judge is not evidence that the task is complete.
       record("paused: completion judge unavailable or invalid response")
       ctx.ui.notify(
-        `${judge} completion check unavailable; automatic follow-ups paused.`,
+        `Clef decision: paused\n${judge} could not return a valid decision. Automatic follow-ups are paused; this does not mean the task is complete.`,
         "warning",
       )
     }

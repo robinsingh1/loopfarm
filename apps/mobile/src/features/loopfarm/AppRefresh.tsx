@@ -2,7 +2,7 @@ import Constants from "expo-constants"
 import * as Updates from "expo-updates"
 import IconRefresh from "@tabler/icons-react-native/IconRefresh"
 import { useRef, useState } from "react"
-import { ActivityIndicator, Pressable, Text, View } from "react-native"
+import { ActivityIndicator, Alert, Pressable, Text, View } from "react-native"
 import {
   isAppUpdateCheckAvailable,
   runAppUpdateCheck,
@@ -18,7 +18,17 @@ const labels: Record<AppUpdateCheckState, string> = {
   current: "Up to date",
 }
 
-export function AppRefresh() {
+export function AppRefresh({
+  onConnect,
+  onRefreshWorkspace,
+  connectionStatus = "Signed out",
+  connectionBusy = false,
+}: {
+  onConnect?: () => void
+  onRefreshWorkspace?: () => Promise<void>
+  connectionStatus?: string
+  connectionBusy?: boolean
+}) {
   const [state, setState] = useState<AppUpdateCheckState>("idle")
   const [error, setError] = useState("")
   const [checkedAt, setCheckedAt] = useState<Date | null>(null)
@@ -46,64 +56,71 @@ export function AppRefresh() {
       setBusy(false)
     }
   }
+  const version = `${Constants.expoConfig?.version ?? "Loopfarm"} · ${Updates.isEmbeddedLaunch ? "Built-in version" : `OTA ${Updates.updateId?.slice(-8) ?? "unknown"}`}`
+  function menu() {
+    Alert.alert(
+      "Refresh",
+      `${version}\n${!available ? "App updates unavailable in this build" : error || labels[state]}${checkedAt ? `\nLast successful check ${checkedAt.toLocaleTimeString()}` : ""}`,
+      [
+        ...(onRefreshWorkspace
+          ? [{ text: "Refresh workspace", onPress: () => void onRefreshWorkspace() }]
+          : []),
+        ...(available
+          ? [{ text: "Check and install app update", onPress: () => void refresh() }]
+          : []),
+        { text: "Cancel", style: "cancel" },
+      ],
+    )
+  }
   return (
     <View
       style={{
-        paddingHorizontal: 20,
-        paddingVertical: 8,
-        gap: 4,
+        paddingHorizontal: 16,
+        paddingVertical: 6,
         borderBottomWidth: 1,
         borderColor: "#d6d3c9",
+        backgroundColor: "#f5f4ed",
       }}
     >
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-        }}
-      >
-        <Text selectable style={{ color: "#45483c", flex: 1, fontSize: 12 }}>
-          {Constants.expoConfig?.version ?? "Loopfarm"} ·{" "}
-          {Updates.isEmbeddedLaunch
-            ? "Built-in version"
-            : `OTA ${Updates.updateId?.slice(-8) ?? "unknown"}`}
-        </Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 12 }}>
+        <View style={{ flex: 1 }}>
+          <Text style={{ color: "#17231a", fontSize: 17, fontWeight: "700" }}>Loopfarm</Text>
+          <Text accessibilityLiveRegion="polite" style={{ color: "#45483c", fontSize: 12 }}>
+            {connectionStatus}
+          </Text>
+        </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Refresh app update"
-          accessibilityHint="Checks for an update, downloads it, and restarts the app if one is available."
-          accessibilityState={{ disabled: busy || !available, busy }}
-          disabled={busy || !available}
-          onPress={() => void refresh()}
-          style={{
-            minHeight: 44,
-            flexDirection: "row",
-            gap: 6,
-            alignItems: "center",
-            opacity: available ? 1 : 0.5,
-          }}
+          accessibilityLabel="Connect workspace"
+          disabled={!onConnect}
+          onPress={onConnect}
+          style={{ minHeight: 44, justifyContent: "center", opacity: onConnect ? 1 : 0.5 }}
         >
-          {busy ? (
-            <ActivityIndicator size="small" color="#45483c" />
+          <Text style={{ color: "#176130", fontWeight: "600" }}>Connect</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Refresh workspace or app"
+          accessibilityState={{ disabled: busy || connectionBusy, busy: busy || connectionBusy }}
+          disabled={busy || connectionBusy}
+          onPress={menu}
+          style={{ minHeight: 44, minWidth: 44, alignItems: "center", justifyContent: "center" }}
+        >
+          {busy || connectionBusy ? (
+            <ActivityIndicator color="#45483c" />
           ) : (
-            <IconRefresh size={18} color="#45483c" />
+            <IconRefresh size={22} color="#45483c" />
           )}
-          <Text style={{ color: "#45483c", fontWeight: "600" }}>Refresh app</Text>
         </Pressable>
       </View>
-      <Text
-        accessibilityLiveRegion="polite"
-        style={{ color: error ? "#a12b23" : "#45483c", fontSize: 12 }}
-      >
-        {!available
-          ? "App updates unavailable in this build"
-          : error
-            ? `Refresh failed: ${error}`
-            : labels[state]}
-        {checkedAt && !busy ? ` · Last successful check ${checkedAt.toLocaleTimeString()}` : ""}
-      </Text>
+      {(state !== "idle" || error) && (
+        <Text
+          accessibilityLiveRegion="polite"
+          style={{ color: error ? "#a12b23" : "#45483c", fontSize: 12 }}
+        >
+          {error ? `App update failed: ${error}` : labels[state]}
+        </Text>
+      )}
     </View>
   )
 }

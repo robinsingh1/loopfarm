@@ -1,3 +1,4 @@
+import { clefDecisionFromItem } from "@t3tools/client-runtime/work-log/tool-presentation";
 import { ThreadContextDivider } from "./thread-context-divider";
 import { ThreadHandoffRow } from "./thread-handoff-row";
 import { SecretRequestCard } from "./SecretRequestCard";
@@ -1634,6 +1635,22 @@ function renderFeedEntry(
     );
   }
 
+  const clef =
+    entry.type === "activity-group"
+      ? clefDecisionFromItem(entry.activities[0]?.projectedItem.item)
+      : null;
+  if (clef) {
+    return (
+      <View className="border-border mx-4 my-2 gap-2 rounded-xl border p-3">
+        <Text className="text-foreground font-semibold">Clef · {clef.action.toUpperCase()}</Text>
+        <Text selectable className="text-foreground-muted">
+          {clef.explanation}
+        </Text>
+        <Text className="text-xs text-foreground-muted">{formatMessageTime(entry.createdAt)}</Text>
+      </View>
+    );
+  }
+
   if (entry.type === "activity-group" && isContextHandoffActivityGroup(entry)) {
     return (
       <ThreadHandoffRow
@@ -1773,8 +1790,8 @@ function renderFeedEntry(
                       mimeType={attachment.mimeType}
                       className={
                         inlineAttachmentIds.size
-                          ? "h-24 w-24 rounded-[14px] bg-user-bubble-foreground/15"
-                          : "aspect-[1.3] w-full rounded-[14px] bg-user-bubble-foreground/15"
+                          ? "bg-user-bubble-foreground/15 h-24 w-24 rounded-[14px]"
+                          : "bg-user-bubble-foreground/15 aspect-[1.3] w-full rounded-[14px]"
                       }
                       onPressPreview={props.onPressPreview}
                     />

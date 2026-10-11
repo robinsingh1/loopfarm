@@ -129,3 +129,17 @@ export function extractToolActivityPresentation(
       : {}),
   };
 }
+
+/** Pi's completion hook emits a notify item, so the decision survives reconnects. */
+export function clefDecisionFromItem(
+  value: unknown,
+): { action: string; explanation: string } | null {
+  const item = asRecord(value);
+  if (item?.type !== "dynamic_tool" || item.toolName !== "notify") return null;
+  const message = asRecord(item.input)?.message;
+  if (typeof message !== "string") return null;
+  const match = /^Clef decision: (continue|verify|complete|blocked|paused)\n([\s\S]+)$/.exec(
+    message,
+  );
+  return match ? { action: match[1]!, explanation: match[2]! } : null;
+}

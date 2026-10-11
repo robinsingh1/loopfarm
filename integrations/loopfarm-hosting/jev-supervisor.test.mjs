@@ -5,7 +5,8 @@ import { installSupervisor } from "./jev-supervisor.mjs"
 function harness(evaluate, configured = true) {
   const handlers = {},
     sent = [],
-    records = []
+    records = [],
+    notifications = []
   const pi = {
     on: (name, fn) => {
       handlers[name] = fn
@@ -14,7 +15,11 @@ function harness(evaluate, configured = true) {
     appendEntry: (_, data) => records.push(data),
     sendUserMessage: (text) => sent.push(text),
   }
-  const ctx = { mode: "rpc", hasPendingMessages: () => false, ui: { notify() {} } }
+  const ctx = {
+    mode: "rpc",
+    hasPendingMessages: () => false,
+    ui: { notify: (message) => notifications.push(message) },
+  }
   installSupervisor(pi, { evaluate, isConfigured: () => configured })
   handlers.input({ text: "Implement and test the feature", source: "rpc" }, ctx)
   const end = () =>
@@ -30,7 +35,7 @@ function harness(evaluate, configured = true) {
       },
       ctx,
     )
-  return { handlers, ctx, sent, records, end }
+  return { handlers, ctx, sent, records, notifications, end }
 }
 const result = (value) => ({ answers: { action: { value } } })
 test("continue and verify enqueue work; complete and blocked leave the session idle", async () => {
@@ -93,4 +98,24 @@ test("unconfigured service, child processes, pending input and aborted turns do 
   h.ctx.hasPendingMessages = () => false
   await h.handlers.agent_end({ messages: [{ role: "assistant", stopReason: "aborted" }] }, h.ctx)
   assert.equal(h.sent.length, 0)
+})
+
+test("decisions explain the next action and safety pauses never claim completion", async () => {
+  for (const action of ["continue", "verify", "complete", "blocked"]) {
+    const h = harness(async () => ({ answers: { action: { value: action, confidence: 0.85 } } }))
+    await h.end()
+    assert.match(h.notifications[0], new RegExp(`^Clef decision: ${action}\\n`))
+    assert.match(h.notifications[0], /Decision score: 85%/)
+  }
+  const uncertain = harness(async () => ({
+    answers: { action: { value: "blocked", confidence: 0.4 } },
+  }))
+  await uncertain.end()
+  assert.match(uncertain.notifications[0], /^Clef decision: paused/)
+  assert.match(uncertain.notifications[0], /below the 60%/)
+  assert.equal(uncertain.sent.length, 0)
+  const capped = harness(async () => result("continue"))
+  for (let i = 0; i < 5; i++) await capped.end()
+  assert.match(capped.notifications.at(-1), /^Clef decision: paused/)
+  assert.match(capped.notifications.at(-1), /four-follow-up limit/)
 })

@@ -1,79 +1,176 @@
 import { useAuth } from "@clerk/expo"
 import Constants from "expo-constants"
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Pressable, Text, View } from "react-native"
+import { AppState, Modal, Pressable, ScrollView, Text, View } from "react-native"
 import { AsyncResult } from "effect/reactivity"
+import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useConnectionController } from "../connection/useConnectionController"
+import { AppRefresh } from "./AppRefresh"
+import { isHostedWorkspace } from "./hostedConnection"
+
 export function HostedWorkspace({
   withConnectionLock,
   children,
+  onSignOut,
 }: {
   children: ReactNode
   withConnectionLock: (work: () => Promise<void>) => Promise<void>
+  onSignOut: () => void
 }) {
   const { getToken } = useAuth()
-  const { connectPairingUrl } = useConnectionController()
-  const [busy, setBusy] = useState(true)
-  const [connected, setConnected] = useState(false)
+  const connections = useConnectionController()
+  const saved = connections.connectedEnvironments.find(isHostedWorkspace)
+  const [busy, setBusy] = useState(false)
+  const [open, setOpen] = useState(false)
+  const [error, setError] = useState("")
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
+  const insets = useSafeAreaInsets()
   const mounted = useRef(false)
   const inFlight = useRef(false)
-  const [message, setMessage] = useState("")
-  async function launch() {
+  const controller = useRef<AbortController | null>(null)
+  async function launch(repair = false) {
     if (inFlight.current) return
     inFlight.current = true
     setBusy(true)
-    setMessage("Starting your private workspace…")
+    setError("")
+    let timeout: ReturnType<typeof setTimeout> | undefined
     try {
       await withConnectionLock(async () => {
         if (!mounted.current) return
         const token = await getToken()
         if (!token) throw new Error("Sign in to continue")
+        controller.current = new AbortController()
+        const currentController = controller.current
+        timeout = setTimeout(() => currentController.abort(), 90000)
         const response = await fetch(
           `${Constants.expoConfig?.extra?.loopfarm?.apiUrl}/api/workspace`,
-          { method: "POST", headers: { authorization: `Bearer ${token}` } },
+          {
+            method: "POST",
+            headers: { authorization: `Bearer ${token}` },
+            signal: controller.current.signal,
+          },
         )
         const data = await response.json()
         if (!response.ok) throw new Error(data.error || "Could not start workspace")
         if (!mounted.current) return
-        const result = await connectPairingUrl(data.pairingUrl)
-        if (!AsyncResult.isSuccess(result))
-          throw new Error("Workspace started, but connection failed. Tap again to reconnect.")
-        if (mounted.current) {
-          setConnected(true)
-          setMessage("Connected. Create a new task and select Pi.")
+        if (saved && !repair) {
+          if (!saved.isEnabled) {
+            const enabled = await connections.setEnvironmentEnabled(saved.environmentId, true)
+            if (!AsyncResult.isSuccess(enabled))
+              throw new Error("Could not enable the saved connection.")
+          }
+          const result = await connections.retryEnvironment(saved.environmentId)
+          if (!AsyncResult.isSuccess(result))
+            throw new Error("Could not reconnect. Open Connect to repair pairing.")
+        } else {
+          const result = await connections.connectPairingUrl(data.pairingUrl, saved?.environmentId)
+          if (!AsyncResult.isSuccess(result))
+            throw new Error("Pairing failed. Try again from Connect.")
         }
       })
-    } catch (e) {
-      if (mounted.current) setMessage(e instanceof Error ? e.message : "Could not connect")
+    } catch (cause) {
+      if (mounted.current) setError(cause instanceof Error ? cause.message : "Could not connect")
     } finally {
+      clearTimeout(timeout)
       inFlight.current = false
       if (mounted.current) setBusy(false)
     }
   }
-  const launchRef = useRef(launch)
-  launchRef.current = launch
+  const latest = useRef({ launch, saved })
+  latest.current = { launch, saved }
   useEffect(() => {
     mounted.current = true
-    void launchRef.current()
+    if (latest.current.saved?.connectionState !== "connected") void latest.current.launch()
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active" && latest.current.saved?.connectionState !== "connected")
+        void latest.current.launch()
+    })
     return () => {
       mounted.current = false
+      controller.current?.abort()
+      subscription.remove()
     }
   }, [])
+  useEffect(() => {
+    if (saved?.connectionState === "connected") {
+      setRefreshedAt(new Date())
+      setError("")
+    }
+  }, [saved?.connectionState])
+  const state = busy ? "Connecting…" : (saved?.connectionState ?? "Not connected")
+  const button = (label: string, action: () => void, disabled = busy) => (
+    <Pressable
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={action}
+      style={{
+        padding: 14,
+        borderWidth: 1,
+        borderColor: "#d6d3c9",
+        borderRadius: 10,
+        opacity: disabled ? 0.5 : 1,
+      }}
+    >
+      <Text style={{ color: "#17231a", fontWeight: "600" }}>{label}</Text>
+    </Pressable>
+  )
   return (
     <>
-      <View style={{ padding: 12, backgroundColor: "#edf4ed", gap: 6 }}>
-        <Pressable accessibilityRole="button" disabled={busy} onPress={() => void launch()}>
-          <Text style={{ color: "#176130", fontWeight: "700", textAlign: "center", padding: 8 }}>
-            {busy
-              ? "Connecting your cloud workspace…"
-              : connected
-                ? "Reconnect workspace"
-                : "Retry connection"}
+      <AppRefresh
+        onConnect={() => setOpen(true)}
+        onRefreshWorkspace={() => launch()}
+        connectionBusy={busy}
+        connectionStatus={error ? "Connection failed · tap Connect" : state}
+      />
+      {!!error && (
+        <Text accessibilityRole="alert" style={{ color: "#a12b23", padding: 10 }}>
+          {error}
+        </Text>
+      )}
+      <View style={{ flex: 1 }}>{children}</View>
+      <Modal
+        visible={open}
+        onRequestClose={() => setOpen(false)}
+        presentationStyle="pageSheet"
+        animationType="slide"
+      >
+        <ScrollView
+          contentContainerStyle={{ padding: 20, paddingTop: Math.max(20, insets.top), gap: 16 }}
+          style={{ backgroundColor: "#f5f4ed" }}
+        >
+          <Text style={{ fontSize: 22, fontWeight: "700", color: "#17231a" }}>
+            Workspace connection
           </Text>
-        </Pressable>
-        {!!message && <Text style={{ color: "#17231a", textAlign: "center" }}>{message}</Text>}
-      </View>
-      {connected && children}
+          <Text style={{ color: "#45483c" }}>
+            {state}
+            {refreshedAt ? ` · Connected at ${refreshedAt.toLocaleTimeString()}` : ""}
+          </Text>
+          <Text style={{ color: "#45483c" }}>
+            Your pairing is saved securely on this device for your signed-in account. Loopfarm
+            reconnects when you return.
+          </Text>
+          {connections.connectedEnvironments.map((environment) => (
+            <View key={environment.environmentId} style={{ gap: 4 }}>
+              <Text style={{ color: "#17231a", fontWeight: "600" }}>
+                {environment.environmentLabel} · {environment.connectionState}
+              </Text>
+              <Text style={{ color: "#45483c" }}>{environment.displayUrl}</Text>
+            </View>
+          ))}
+          {!!(error || saved?.connectionError) && (
+            <Text accessibilityRole="alert" style={{ color: "#a12b23" }}>
+              {error || saved?.connectionError}
+            </Text>
+          )}
+          {button(
+            saved ? "Reconnect saved workspace" : "Connect hosted workspace",
+            () => void launch(),
+          )}
+          {!!saved && button("Repair pairing", () => void launch(true))}
+          {button("Sign out and clear connections", onSignOut)}
+          {button("Done", () => setOpen(false), false)}
+        </ScrollView>
+      </Modal>
     </>
   )
 }

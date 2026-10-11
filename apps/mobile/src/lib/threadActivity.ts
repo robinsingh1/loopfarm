@@ -6,7 +6,10 @@ import type {
 import { turnItemIsWorkspacePreparation } from "@t3tools/client-runtime/state/turn-item-presentation";
 import { formatSubagentDisplayTitle } from "@t3tools/client-runtime/state/subagent-display";
 import { isLiveSubagentTurnItem } from "@t3tools/client-runtime/state/subagentRuntime";
-import { extractToolActivityPresentation } from "@t3tools/client-runtime/work-log/tool-presentation";
+import {
+  clefDecisionFromItem,
+  extractToolActivityPresentation,
+} from "@t3tools/client-runtime/work-log/tool-presentation";
 import {
   turnItemDetailRevision,
   turnItemHasDetail,
@@ -454,6 +457,7 @@ function itemIsToolLike(item: OrchestrationV2TurnItem): boolean {
 }
 
 function itemIsProminent(item: OrchestrationV2TurnItem): boolean {
+  if (clefDecisionFromItem(item)) return true;
   return (
     item.type === "fork" ||
     item.type === "thread_created" ||
@@ -945,6 +949,7 @@ function groupAdjacentActivities(entries: ReadonlyArray<RawThreadFeedEntry>): Th
     }
 
     const isStandaloneActivity =
+      clefDecisionFromItem(entry.activity.projectedItem.item) !== null ||
       entry.activity.projectedItem.item.type === "compaction" ||
       entry.activity.projectedItem.item.type === "handoff" ||
       entry.activity.projectedItem.item.type === "notification";
@@ -1389,6 +1394,7 @@ function appendPresentedFeedEntry(
     return;
   }
   if (
+    clefDecisionFromItem(entry.activities[0]?.projectedItem.item) !== null ||
     isContextCompactionActivityGroup(entry) ||
     isContextHandoffActivityGroup(entry) ||
     isUserInputActivityGroup(entry) ||

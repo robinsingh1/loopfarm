@@ -2,19 +2,11 @@
 
 Loopfarm is a fork of T3 Code for hosted Pi coding sessions and durable research. Upstream T3 documentation follows below; its license and attribution are retained.
 
-The iPhone client uses Loopfarm Google sign-in and automatic hosted workspace pairing. Inside a coding thread, **Research loop** starts or revisits that thread's cloud research job. Set a goal, completion criteria, and a round limit; inspect saved findings or pause/resume/stop. The thread shows live status, inline pause/resume, and the latest finding; Details opens the complete journal. Status refreshes when the app returns to the foreground. Pausing saves the current round before waiting. This initial adapter keeps research findings separate from coding messages. Research execution requires the Loopfarm API and its configured search provider; the hosted coding completion hook uses Cloudflare Clef without TypeSafe credits. See `integrations/loopfarm-hosting` for its implementation.
+The iPhone client opens directly into T3 after Google sign-in. The title bar contains **Connect** and **Refresh**. Connect shows the saved workspace and its live connection status, offers reconnect/repair, and includes sign-out. Pairing stays in T3's secure device catalog and is reused for the same account; switching accounts clears the previous connections. Refresh offers workspace reconnect or an app update check, with installed-version details.
 
-Mobile development uses the `loopfarm` branch. The original T3 repository remains upstream; Loopfarm authentication and cloud integrations are isolated under the mobile `features/loopfarm` directory.
+Inside a coding thread, **Research loop** starts or revisits that thread's cloud research job. Set a goal, completion criteria, and round limit; inspect findings or pause/resume/stop. Pausing saves the current round before waiting. Cloud Pi and the standalone Research navigation have been removed; existing research journals remain available on the Loopfarm website. The current durable research adapter still stores findings separately from coding messages. Full research thread/event integration and web parity are pending, and live research requires a configured search provider.
 
----
-
-# T3 Code
-
-T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).
-
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, T3 Code can control them.
-
-Use **Refresh app** in the Loopfarm header to check for an OTA update and restart into it. The header shows the installed OTA ID, progress, failures, and the last successful check. The separate refresh icon in thread research reloads research data and shows the last successful sync time.
+Clef's Pi completion hook publishes a decision card in the mobile conversation: **Continue** takes the next step, **Verify** runs missing checks, **Complete** stops automatic work, and **Blocked** waits for input or a dependency. **Paused** means low confidence, an unavailable judge, or the four-follow-up limit. Cards show the decision score and follow-up count when available, and remain visible when the work log collapses. These checks supervise Pi coding turns; the separate durable research runner still stops at its iteration limit. See `integrations/loopfarm-hosting` for the hook.
 
 ## "Wait, what are you selling me?"
 
