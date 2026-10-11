@@ -1,6 +1,4 @@
 import { ClefControl } from "../loopfarm/ClefControl";
-import { AppText as Text } from "../../components/AppText";
-import { isAutoresearchTitle } from "@t3tools/client-runtime/operations";
 import { useAtomValue } from "@effect/atom-react";
 import { useThreadReportedModelSelection } from "../../state/entities";
 import { UsageLimitRecoveryCard } from "./UsageLimitRecoveryCard";
@@ -1086,18 +1084,6 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
 
   return (
     <View className="flex-1">
-      {providerSubagentProvider?.driver === "pi" && !props.providerSubagentStatus && !props.creationState ? (
-        <ClefControl key={selectedThreadKey} environmentId={props.environmentId} thread={props.selectedThread}
-          busy={props.activeThreadBusy} canOperate={props.canOperateThread && props.connectionStateLabel === "connected"} />
-      ) : null}
-      {isAutoresearchTitle(props.selectedThread.title) ? (
-        <View className="border-b border-border px-4 py-2">
-          <Text className="font-t3-medium text-foreground">Autoresearch · Pi + Clef</Text>
-          <Text className="text-xs text-muted-foreground">
-            Experiments and Clef decisions appear in this conversation.
-          </Text>
-        </View>
-      ) : null}
       {showContent ? (
         <View
           style={{ flex: 1 }}
@@ -1353,6 +1339,17 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
                 A rejected creation has no thread to send to; the failure card
                 owns the slot instead. */}
                 <View style={composerSlotHidden ? { display: "none" } : undefined}>
+                  {providerSubagentProvider?.driver === "pi" &&
+                  !props.providerSubagentStatus &&
+                  !props.creationState ? (
+                    <ClefControl
+                      key={selectedThreadKey}
+                      environmentId={props.environmentId}
+                      thread={props.selectedThread}
+                      busy={props.activeThreadBusy}
+                      canOperate={props.canOperateThread && props.connectionStateLabel === "connected"}
+                    />
+                  ) : null}
                   {isProviderSubagent ? (
                     <View
                       className="self-center px-3 pt-1.5"

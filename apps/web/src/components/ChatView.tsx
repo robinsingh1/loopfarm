@@ -11317,6 +11317,16 @@ export default function ChatView(props: ChatViewProps) {
           />
         </header>
 
+        {isServerThread && selectedProvider === "pi" && serverProjection ? (
+          <ClefControl
+            key={String(activeThreadId)}
+            items={serverProjection.turnItems}
+            busy={isWorking}
+            canOperate={canOperateThread}
+            send={sendAppMessage}
+          />
+        ) : null}
+
         {/* Main content area with optional plan sidebar */}
         <div className="relative flex min-h-0 min-w-0 flex-1">
           {/* Chat column */}
@@ -11340,10 +11350,6 @@ export default function ChatView(props: ChatViewProps) {
             onDrop={workspaceFileDropHandlers.onDrop}
           >
             <ThreadFind onClose={focusComposer} />
-            {isServerThread && selectedProvider === "pi" && serverProjection ? (
-              <ClefControl key={String(activeThreadId)} items={serverProjection.turnItems}
-                busy={isWorking} canOperate={canOperateThread} send={sendAppMessage} />
-            ) : null}
             {isWorkspaceFileDragActive ? (
               <div
                 className="pointer-events-none absolute inset-2 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary/60 bg-primary/[0.035]"
