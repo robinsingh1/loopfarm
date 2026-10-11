@@ -30,6 +30,7 @@ test("startup adds subagents idempotently and preserves user models and credenti
     assert.equal(settings.defaultProvider, "other")
     assert.deepEqual(settings.packages, ["existing", "/usr/local/lib/node_modules/pi-subagents"])
     assert.deepEqual(settings.extensions, ["existing-extension", "/opt/loopfarm/jev-extension.ts"])
+    assert.deepEqual(settings.skills, ["/usr/local/lib/node_modules/pi-autoresearch/skills"])
     assert.equal(settings.subagents.defaultModel, "inherit")
     const models = JSON.parse(await readFile(path.join(dir, "models.json")))
     assert.equal(models.providers.other.baseUrl, "https://example.com")

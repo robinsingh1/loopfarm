@@ -5,3 +5,5 @@
 !jev-extension.ts
 !jev-supervisor.mjs
 !clef-client.mjs
+
+!autoresearch-bridge.mjs

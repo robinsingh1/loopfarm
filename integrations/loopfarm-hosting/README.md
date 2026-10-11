@@ -10,6 +10,21 @@ leaves completed work idle, and pauses for blocked or uncertain work. It require
 no TypeSafe credits. In a new Pi coding chat, use `/loopfarm-judge status`, `on`,
 or `off`. Child subagents are available through pi-subagents.
 
+Pi Autoresearch 1.9.0 is installed in the hosted image. In a dedicated clean
+project checkout, start `/autoresearch <objective and experiment budget>`.
+Use `.auto/config.json` with `maxIterations` to cap recorded experiments.
+The native tools measure, check, log, and keep/revert experiments; no Brave or
+separate autoresearch key is needed. Pi uses the workspace's configured model.
+
+In hosted RPC sessions, Clef owns automatic continuation. The bridge disables
+upstream auto-resume handlers, requires `run_experiment` before logging and
+checks the logged metric against the parsed primary measurement. Each turn can
+log one experiment, then must yield. At the iteration limit, tools turn off but
+Pi can summarize for Clef instead of aborting before review. Complete, Blocked,
+low confidence, and the four-follow-up limit leave the session idle. Use
+`/autoresearch off` to stop; terminal sessions retain upstream behavior.
+Clef scores are completion judgments, not guarantees of research correctness.
+
 Run focused tests with `node --test integrations/loopfarm-hosting/*.test.mjs`.
 Deployment needs Cloudflare Containers, the configured private R2 bucket and
 Workers AI. Use Wrangler 4.127.1 or later with the config in this directory.

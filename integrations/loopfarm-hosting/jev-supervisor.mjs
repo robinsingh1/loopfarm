@@ -28,10 +28,12 @@ export function installSupervisor(pi, client) {
   let request = ""
   let attempts = 0
   let generation = 0
+  let researchEvidence
   let status = "waiting for a user request"
   const reset = () => {
     request = ""
     attempts = 0
+    researchEvidence = undefined
     generation++
   }
   const record = (value) => {
@@ -60,6 +62,19 @@ export function installSupervisor(pi, client) {
   }
   pi.registerCommand("loopfarm-judge", command)
   pi.registerCommand("loopfarm-jev", command)
+  const controller = {
+    startResearch(text) {
+      reset()
+      enabled = true
+      request = `Pi Autoresearch experiment objective: ${text.slice(0, 16000)}. Judge the bounded objective using actual run_experiment and log_experiment evidence. Honor the iteration limit; do not demand endless optimization.`
+    },
+    recordResearchExperiment(evidence) {
+      researchEvidence = evidence
+    },
+    stopResearch() {
+      reset()
+    },
+  }
   pi.on("agent_end", async (event, ctx) => {
     if (!enabled || ctx.mode !== "rpc" || !request || ctx.hasPendingMessages()) return
     const assistant = event.messages.filter((m) => m.role === "assistant").at(-1)
@@ -96,7 +111,7 @@ export function installSupervisor(pi, client) {
     }))
     try {
       const result = await client.evaluate(
-        { state: { request, transcript }, questions: judgment },
+        { state: { request, transcript, researchEvidence }, questions: judgment },
         AbortSignal.timeout(20000),
       )
       if (generation !== current || !enabled || ctx.hasPendingMessages()) return
@@ -123,10 +138,10 @@ export function installSupervisor(pi, client) {
         ? `\nDecision score: ${Math.round(confidence * 100)}%.`
         : ""
       ctx.ui.notify(
-        `Clef decision: ${label}\n${explanation}${score}\nAutomatic follow-ups: ${attempts + (prompts[action] ? 1 : 0)}/4.`,
+        `Clef decision: ${label}\n${explanation}${score}\nAutomatic follow-ups: ${attempts + (!uncertain && prompts[action] ? 1 : 0)}/4.`,
         action === "blocked" ? "warning" : "info",
       )
-      if (prompts[action]) {
+      if (!uncertain && prompts[action]) {
         attempts++
         pi.sendUserMessage(prompts[action], { deliverAs: "followUp" })
       }
@@ -139,4 +154,5 @@ export function installSupervisor(pi, client) {
       )
     }
   })
+  return controller
 }

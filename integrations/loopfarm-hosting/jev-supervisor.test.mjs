@@ -119,3 +119,10 @@ test("decisions explain the next action and safety pauses never claim completion
   assert.match(capped.notifications.at(-1), /^Clef decision: paused/)
   assert.match(capped.notifications.at(-1), /four-follow-up limit/)
 })
+
+test("low-confidence continue never queues work", async () => {
+  const h = harness(async () => ({ answers: { action: { value: "continue", confidence: 0.4 } } }))
+  await h.end()
+  assert.equal(h.sent.length, 0)
+  assert.match(h.notifications[0], /^Clef decision: paused/)
+})

@@ -19,6 +19,9 @@ export async function configurePi(agentDir, modelBase, modelKey) {
   settings.extensions = [
     ...new Set([...(settings.extensions ?? []), "/opt/loopfarm/jev-extension.ts"]),
   ]
+  settings.skills = [
+    ...new Set([...(settings.skills ?? []), "/usr/local/lib/node_modules/pi-autoresearch/skills"]),
+  ]
   settings.defaultProvider ??= "loopfarm"
   settings.defaultModel ??= "@cf/zai-org/glm-4.7-flash"
   await writeFile(settingsFile, JSON.stringify(settings, null, 2), { mode: 0o600 })
