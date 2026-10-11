@@ -7,3 +7,6 @@
 !clef-client.mjs
 
 !autoresearch-bridge.mjs
+
+!web-dist/
+!web-dist/**

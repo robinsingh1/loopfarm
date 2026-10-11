@@ -1,3 +1,4 @@
+import { AutoresearchLauncher } from "./chat/AutoresearchLauncher";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
 import { usageLimitRecoveryBannerItem } from "./chat/UsageLimitRecoveryBanner";
@@ -11574,6 +11575,15 @@ export default function ChatView(props: ChatViewProps) {
                                   ? () => onOpenRelatedThread(parentThreadLink.threadId)
                                   : null
                               }
+                            />
+                          ) : null}
+                          {isDraftHeroState && composerDraftTarget ? (
+                            <AutoresearchLauncher
+                              enabled={selectedProvider === "pi" && canOperateThread}
+                              getPrompt={() =>
+                                useComposerDraftStore.getState().getComposerDraft(composerDraftTarget)?.prompt ?? ""
+                              }
+                              onPrepare={(prompt) => setComposerDraftPrompt(composerDraftTarget, prompt)}
                             />
                           ) : null}
                           {!composerMounted ? null : (

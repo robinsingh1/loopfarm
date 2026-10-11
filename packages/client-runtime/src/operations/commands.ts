@@ -1,3 +1,4 @@
+import { autoresearchTitle } from "./autoresearch.ts";
 import { remapComposerContextAttachments } from "@t3tools/shared/composerContextReferences";
 import {
   type ThreadLinkedPullRequest,
@@ -671,8 +672,8 @@ export const startThreadTurn = Effect.fn("EnvironmentCommands.startThreadTurn")(
       threadId: input.threadId,
       ...(bootstrap === undefined ? { reuseExistingThread: true } : {}),
       projectId: thread.projectId,
-      title: input.titleSeed ?? thread.title,
-      generateTitle: input.titleSeed !== undefined,
+      title: autoresearchTitle(input.message.text) ?? input.titleSeed ?? thread.title,
+      generateTitle: autoresearchTitle(input.message.text) === null && input.titleSeed !== undefined,
       modelSelection: input.modelSelection ?? thread.modelSelection,
       runtimeMode: input.runtimeMode,
       interactionMode: input.interactionMode,

@@ -1,3 +1,4 @@
+import { autoresearchTitle } from "./autoresearch.ts";
 import { assistantCitationsToPlainText } from "@t3tools/shared/assistantCitations";
 import { truncate } from "@t3tools/shared/String";
 
@@ -12,6 +13,8 @@ function normalizeTitleSeed(value: string): string {
 }
 
 export function deriveThreadTitleSeed(input: ThreadTitleSeedInput): string {
+  const research = autoresearchTitle(input.text);
+  if (research) return research;
   const text = normalizeTitleSeed(input.text);
   if (text.length > 0) {
     return truncate(text);

@@ -1,3 +1,4 @@
+import { isAutoresearchTitle } from "@t3tools/client-runtime/operations";
 import type { ThreadRowProviderInstance } from "./thread-provider-instance";
 import {
   THREAD_LIST_V2_MONO_FONT as MONO_FONT,
@@ -1042,6 +1043,7 @@ export const ThreadListV2Row = memo(function ThreadListV2Row(props: {
       >
         {thread.title}
       </Text>
+      {isAutoresearchTitle(thread.title) ? <Text className="text-xs text-muted-foreground">Autoresearch session</Text> : null}
       {props.searchMatch ? (
         <View className="mt-1">
           <ThreadSearchMatchExcerpt

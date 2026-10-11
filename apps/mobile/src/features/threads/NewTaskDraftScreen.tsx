@@ -1,3 +1,4 @@
+import { AutoresearchLauncher } from "../loopfarm/AutoresearchLauncher";
 import { useAtomValue } from "@effect/atom-react";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/reactivity";
@@ -1694,6 +1695,11 @@ export function NewTaskDraftScreen(props: {
           paddingTop: 14,
         }}
       >
+        <AutoresearchLauncher
+          enabled={!isComposerInteractionLocked && Boolean(selectedProject) && flow.selectedModelOption?.providerDriver === "pi"}
+          prompt={flow.prompt}
+          onPrepare={flow.setPrompt}
+        />
         {stripAttachments.length > 0 ? (
           <View className="px-[14px] pb-2.5">
             <ComposerAttachmentStrip

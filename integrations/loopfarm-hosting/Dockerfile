@@ -5,6 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends libatomic1 && r
 RUN npm install -g @earendil-works/pi-coding-agent@0.86.1 pi-subagents@0.77.0 && npm cache clean --force
 RUN npm install -g --legacy-peer-deps pi-autoresearch@1.9.0 && npm cache clean --force
 COPY autoresearch-bridge.mjs manager.mjs pi-config.mjs jev-extension.ts jev-supervisor.mjs clef-client.mjs /opt/loopfarm/
+COPY web-dist/ /usr/local/lib/node_modules/t3/node_modules/@t3code/t3-linux-x64/client/
 ENV HOME=/workspace/home
 WORKDIR /workspace
 EXPOSE 3773 3838
