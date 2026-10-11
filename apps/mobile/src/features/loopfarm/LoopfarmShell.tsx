@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { HostedWorkspace } from "./HostedWorkspace"
 import { CloudChats } from "./CloudChats"
+import { AppRefresh } from "./AppRefresh"
 import { requestRun, type Run } from "./api"
 
 WebBrowser.maybeCompleteAuthSession()
@@ -189,6 +190,7 @@ export function LoopfarmShell({ children }: { children: ReactNode }) {
           {button("Coding", () => setTab("chats"))}
         </View>
       </View>
+      <AppRefresh />
       {tab === "cloud" && isSignedIn ? (
         <CloudChats key={userId} />
       ) : tab === "chats" && isSignedIn && codingOwner === userId ? (

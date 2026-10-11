@@ -1,3 +1,4 @@
+import { IconRefresh } from "@tabler/icons-react-native"
 import { useAuth } from "@clerk/expo"
 import Constants from "expo-constants"
 import * as Crypto from "expo-crypto"
@@ -40,12 +41,16 @@ export function ThreadResearch({
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [loadError, setLoadError] = useState("")
+  const [refreshing, setRefreshing] = useState(false)
+  const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
+  const refreshRun = useRef<(() => Promise<void>) | null>(null)
   const revision = useRef(0)
   useEffect(() => {
     let cancelled = false
     revision.current++
     setId(null)
     setRun(null)
+    setRefreshedAt(null)
     setError("")
     setLoadError("")
     setBusy(false)
@@ -71,11 +76,16 @@ export function ThreadResearch({
   useEffect(() => {
     if (!id || !base || !userId || busy) return
     const current = revision.current
+    let mounted = true
     const watcher = watchRun({
+      onRefreshing: (value) => {
+        if (mounted) setRefreshing(value)
+      },
       load: async (signal) => requestRun(base, id, await token.current(), "GET", undefined, signal),
       onRun: (next) => {
         if (current !== revision.current) return
         setRun(next)
+        setRefreshedAt(new Date())
         setLoadError("")
       },
       onError: (cause) => {
@@ -83,11 +93,14 @@ export function ThreadResearch({
         setLoadError(cause instanceof Error ? cause.message : "Could not load research.")
       },
     })
+    refreshRun.current = watcher.refresh
     watcher.setActive(AppState.currentState === "active")
     const subscription = AppState.addEventListener("change", (state) => {
       watcher.setActive(state === "active")
     })
     return () => {
+      mounted = false
+      refreshRun.current = null
       watcher.dispose()
       subscription.remove()
     }
@@ -96,6 +109,7 @@ export function ThreadResearch({
     if (!id || !base || busy) return
     const current = ++revision.current
     setBusy(true)
+    setRefreshing(false)
     setError("")
     try {
       const count = Number(iterations)
@@ -147,6 +161,31 @@ export function ThreadResearch({
               : ""}
           </Text>
           {button(run && run.status !== "idle" ? "Details" : "Research loop", () => setOpen(true))}
+        </View>
+        <View className="flex-row items-center justify-between gap-2">
+          <Text accessibilityLiveRegion="polite" className="text-foreground-muted flex-1 text-xs">
+            {refreshing
+              ? "Refreshing research…"
+              : loadError
+                ? "Research refresh failed"
+                : refreshedAt
+                  ? `Research synced ${refreshedAt.toLocaleTimeString()}`
+                  : "Research not synced yet"}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Refresh research data"
+            accessibilityState={{ disabled: busy || refreshing || !id, busy: refreshing }}
+            disabled={busy || refreshing || !id}
+            onPress={() => void refreshRun.current?.()}
+            className="min-h-11 min-w-11 items-center justify-center"
+          >
+            {refreshing ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <IconRefresh size={20} color="#6b7280" />
+            )}
+          </Pressable>
         </View>
         {run && run.status !== "idle" && (
           <>

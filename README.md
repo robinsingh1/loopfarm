@@ -14,6 +14,8 @@ T3 Code is an "agent harness control surface". It enables control of the agents 
 
 Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they're set up on your computer, T3 Code can control them.
 
+Use **Refresh app** in the Loopfarm header to check for an OTA update and restart into it. The header shows the installed OTA ID, progress, failures, and the last successful check. The separate refresh icon in thread research reloads research data and shows the last successful sync time.
+
 ## "Wait, what are you selling me?"
 
 Nothing. We built T3 Code because we wanted the best possible development experience with agents. We were inspired by existing solutions like the Codex desktop app, Conductor, Claude Desktop and Cursor Glass, but none met our bar.

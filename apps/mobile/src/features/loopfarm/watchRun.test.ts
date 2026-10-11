@@ -13,11 +13,13 @@ function fixture() {
   const timers: { callback: () => void; delay: number; cancelled: boolean }[] = []
   const seen: Run[] = []
   const errors: unknown[] = []
+  const loading: boolean[] = []
   const watcher = watchRun({
     load: (signal) =>
       new Promise<Run>((resolve, reject) => requests.push({ signal, resolve, reject })),
     onRun: (run) => seen.push(run),
     onError: (error) => errors.push(error),
+    onRefreshing: (value) => loading.push(value),
     schedule: (callback, delay) => {
       const timer = { callback, delay, cancelled: false }
       timers.push(timer)
@@ -26,7 +28,7 @@ function fixture() {
       }
     },
   })
-  return { watcher, requests, timers, seen, errors }
+  return { watcher, requests, timers, seen, errors, loading }
 }
 test("backgrounding aborts the request, ignores its late result, and foregrounding refreshes", async () => {
   const f = fixture()
@@ -73,4 +75,22 @@ test("failures retry while active and disposal suppresses late errors", async ()
   await Promise.resolve()
   assert.equal(f.errors.length, 1)
   assert.equal(f.timers.length, 1)
+})
+
+test("refresh status stays busy until the current request finishes, including failures", async () => {
+  const f = fixture()
+  f.watcher.setActive(true)
+  assert.equal(f.loading.at(-1), true)
+  const refresh = f.watcher.refresh()
+  f.requests[0]!.resolve(state)
+  await Promise.resolve()
+  assert.equal(f.loading.at(-1), true)
+  f.requests[1]!.reject(new Error("offline"))
+  await refresh
+  assert.equal(f.loading.at(-1), false)
+  f.timers.at(-1)!.callback()
+  assert.equal(f.loading.at(-1), true)
+  f.watcher.setActive(false)
+  assert.equal(f.loading.at(-1), false)
+  f.watcher.dispose()
 })

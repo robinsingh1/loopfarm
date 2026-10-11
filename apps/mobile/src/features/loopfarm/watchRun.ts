@@ -6,6 +6,7 @@ export function watchRun(options: {
   load: (signal: AbortSignal) => Promise<Run>
   onRun: (run: Run) => void
   onError: (error: unknown) => void
+  onRefreshing?: (refreshing: boolean) => void
   schedule?: (callback: () => void, delay: number) => () => void
 }) {
   const schedule =
@@ -22,6 +23,7 @@ export function watchRun(options: {
   function cancel() {
     generation++
     controller?.abort()
+    options.onRefreshing?.(false)
     cancelTimer?.()
     cancelTimer = undefined
   }
@@ -30,6 +32,7 @@ export function watchRun(options: {
     if (!active || disposed) return
     const current = generation
     controller = new AbortController()
+    options.onRefreshing?.(true)
     let delay = 30000
     try {
       const run = await options.load(controller.signal)
@@ -39,6 +42,7 @@ export function watchRun(options: {
     } catch (error) {
       if (current === generation) options.onError(error)
     } finally {
+      if (current === generation) options.onRefreshing?.(false)
       if (current === generation && active && !disposed)
         cancelTimer = schedule(() => void refresh(), delay)
     }
