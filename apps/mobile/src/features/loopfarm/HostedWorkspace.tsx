@@ -6,7 +6,11 @@ import { AsyncResult } from "effect/reactivity"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import { useConnectionController } from "../connection/useConnectionController"
 import { AppRefresh } from "./AppRefresh"
-import { isHostedWorkspace } from "./hostedConnection"
+import {
+  isHostedWorkspace,
+  requestHostedWorkspace,
+  reconnectHostedWorkspace,
+} from "./hostedConnection"
 
 export function HostedWorkspace({
   withConnectionLock,
@@ -21,6 +25,7 @@ export function HostedWorkspace({
   const connections = useConnectionController()
   const saved = connections.connectedEnvironments.find(isHostedWorkspace)
   const [busy, setBusy] = useState(false)
+  const [phase, setPhase] = useState("Starting workspace…")
   const [open, setOpen] = useState(false)
   const [error, setError] = useState("")
   const [refreshedAt, setRefreshedAt] = useState<Date | null>(null)
@@ -32,6 +37,7 @@ export function HostedWorkspace({
     if (inFlight.current) return
     inFlight.current = true
     setBusy(true)
+    setPhase("Starting workspace…")
     setError("")
     let timeout: ReturnType<typeof setTimeout> | undefined
     try {
@@ -41,35 +47,53 @@ export function HostedWorkspace({
         if (!token) throw new Error("Sign in to continue")
         controller.current = new AbortController()
         const currentController = controller.current
-        timeout = setTimeout(() => currentController.abort(), 90000)
-        const response = await fetch(
+        timeout = setTimeout(() => currentController.abort(), 150000)
+        const data = await requestHostedWorkspace(
           `${Constants.expoConfig?.extra?.loopfarm?.apiUrl}/api/workspace`,
-          {
-            method: "POST",
-            headers: { authorization: `Bearer ${token}` },
-            signal: controller.current.signal,
-          },
+          token,
+          currentController.signal,
         )
-        const data = await response.json()
-        if (!response.ok) throw new Error(data.error || "Could not start workspace")
         if (!mounted.current) return
-        if (saved && !repair) {
-          if (!saved.isEnabled) {
-            const enabled = await connections.setEnvironmentEnabled(saved.environmentId, true)
-            if (!AsyncResult.isSuccess(enabled))
-              throw new Error("Could not enable the saved connection.")
-          }
-          const result = await connections.retryEnvironment(saved.environmentId)
-          if (!AsyncResult.isSuccess(result))
-            throw new Error("Could not reconnect. Open Connect to repair pairing.")
-        } else {
-          const result = await connections.connectPairingUrl(data.pairingUrl, saved?.environmentId)
-          if (!AsyncResult.isSuccess(result))
-            throw new Error("Pairing failed. Try again from Connect.")
+        if (saved && !saved.isEnabled) {
+          const enabled = await connections.setEnvironmentEnabled(saved.environmentId, true)
+          if (!AsyncResult.isSuccess(enabled))
+            throw new Error("Could not enable the saved connection.")
         }
+        setPhase("Reconnecting to T3…")
+        await reconnectHostedWorkspace({
+          reuseSaved: Boolean(saved && !repair),
+          retry: async () =>
+            Boolean(
+              saved &&
+              AsyncResult.isSuccess(await connections.retryEnvironment(saved.environmentId)),
+            ),
+          repair: async () => {
+            if (currentController.signal.aborted) throw new Error("Connection cancelled")
+            return AsyncResult.isSuccess(
+              await connections.connectPairingUrl(data.pairingUrl, saved?.environmentId),
+            )
+          },
+          onRepair: () => setPhase("Repairing workspace pairing…"),
+          waitConnected: async () => {
+            const deadline = Date.now() + 15000
+            while (Date.now() < deadline) {
+              if (currentController.signal.aborted) throw new Error("Connection cancelled")
+              if (latest.current.saved?.connectionState === "connected") return true
+              await new Promise((resolve) => setTimeout(resolve, 250))
+            }
+            return false
+          },
+        })
       })
     } catch (cause) {
-      if (mounted.current) setError(cause instanceof Error ? cause.message : "Could not connect")
+      if (mounted.current)
+        setError(
+          controller.current?.signal.aborted
+            ? "Workspace connection timed out. Tap Connect to try again."
+            : cause instanceof Error
+              ? cause.message
+              : "Could not connect",
+        )
     } finally {
       clearTimeout(timeout)
       inFlight.current = false
@@ -97,7 +121,7 @@ export function HostedWorkspace({
       setError("")
     }
   }, [saved?.connectionState])
-  const state = busy ? "Connecting…" : (saved?.connectionState ?? "Not connected")
+  const state = busy ? phase : (saved?.connectionState ?? "Not connected")
   const button = (label: string, action: () => void, disabled = busy) => (
     <Pressable
       accessibilityRole="button"
