@@ -6,12 +6,13 @@ function harness(evaluate, configured = true) {
   const handlers = {},
     sent = [],
     records = [],
-    notifications = []
+    notifications = [],
+    commands = {}
   const pi = {
     on: (name, fn) => {
       handlers[name] = fn
     },
-    registerCommand() {},
+    registerCommand: (name, command) => { commands[name] = command },
     appendEntry: (_, data) => records.push(data),
     sendUserMessage: (text) => sent.push(text),
   }
@@ -35,7 +36,7 @@ function harness(evaluate, configured = true) {
       },
       ctx,
     )
-  return { handlers, ctx, sent, records, notifications, end }
+  return { handlers, ctx, sent, records, notifications, commands, end }
 }
 const result = (value) => ({ answers: { action: { value } } })
 test("continue and verify enqueue work; complete and blocked leave the session idle", async () => {
@@ -111,13 +112,13 @@ test("decisions explain the next action and safety pauses never claim completion
     answers: { action: { value: "blocked", confidence: 0.4 } },
   }))
   await uncertain.end()
-  assert.match(uncertain.notifications[0], /^Clef decision: paused/)
-  assert.match(uncertain.notifications[0], /below the 60%/)
+  assert.match(uncertain.notifications.find(message => message.startsWith("Clef decision:")), /^Clef decision: paused/)
+  assert.match(uncertain.notifications.find(message => message.startsWith("Clef decision:")), /below the 60%/)
   assert.equal(uncertain.sent.length, 0)
   const capped = harness(async () => result("continue"))
   for (let i = 0; i < 5; i++) await capped.end()
-  assert.match(capped.notifications.at(-1), /^Clef decision: paused/)
-  assert.match(capped.notifications.at(-1), /four-follow-up limit/)
+  assert.match(capped.notifications.findLast(message => message.startsWith("Clef decision:")), /^Clef decision: paused/)
+  assert.match(capped.notifications.findLast(message => message.startsWith("Clef decision:")), /four-follow-up limit/)
 })
 
 test("low-confidence continue never queues work", async () => {
@@ -125,4 +126,31 @@ test("low-confidence continue never queues work", async () => {
   await h.end()
   assert.equal(h.sent.length, 0)
   assert.match(h.notifications[0], /^Clef decision: paused/)
+})
+
+test("progress distinguishes queued, started and ended follow-ups", async () => {
+  const h = harness(async () => result("verify"))
+  await h.end()
+  const states = () => h.notifications.filter(s => s.startsWith("Clef progress: ")).map(s => { const m = / · (\d)\/4 follow-ups requested · (\w+)/.exec(s); return { attempts: Number(m[1]), event: m[2] } })
+  assert.equal(states().at(-1).event, "queued")
+  assert.equal(states().at(-1).attempts, 1)
+  h.handlers.agent_start({}, h.ctx)
+  assert.equal(states().at(-1).event, "started")
+  await h.end()
+  assert.ok(states().some(s => s.event === "finished" && s.attempts === 1))
+})
+test("off is acknowledged, preserved on session resume, and suppresses follow-ups", async () => {
+  const h = harness(async () => result("continue"))
+  await h.commands["loopfarm-judge"].handler("off", h.ctx)
+  assert.ok(h.notifications.some(s => s.startsWith("Clef progress: Off")))
+  await h.end()
+  assert.equal(h.sent.length, 0)
+  h.ctx.sessionManager = { getEntries: () => [{ type: "custom", customType: "loopfarm-clef-settings", data: { enabled: false } }] }
+  h.handlers.session_start({}, h.ctx)
+  h.handlers.input({ text: "Another task", source: "rpc" }, h.ctx)
+  await h.end()
+  assert.equal(h.sent.length, 0)
+  await h.commands["loopfarm-judge"].handler("on", h.ctx)
+  await h.end()
+  assert.equal(h.sent.length, 1)
 })

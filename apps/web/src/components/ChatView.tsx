@@ -1,3 +1,4 @@
+import { ClefControl } from "./chat/ClefControl";
 import { AutoresearchLauncher } from "./chat/AutoresearchLauncher";
 import { ThreadFind, ThreadFindCanvas, type ThreadFindControls } from "./chat/ThreadFindProvider";
 import { THREAD_FIND_BAR_RESERVED_HEIGHT } from "./chat/ThreadFindBar";
@@ -11339,6 +11340,10 @@ export default function ChatView(props: ChatViewProps) {
             onDrop={workspaceFileDropHandlers.onDrop}
           >
             <ThreadFind onClose={focusComposer} />
+            {isServerThread && selectedProvider === "pi" && serverProjection ? (
+              <ClefControl key={String(activeThreadId)} items={serverProjection.turnItems}
+                busy={isWorking} canOperate={canOperateThread} send={sendAppMessage} />
+            ) : null}
             {isWorkspaceFileDragActive ? (
               <div
                 className="pointer-events-none absolute inset-2 z-40 flex items-center justify-center rounded-2xl border-2 border-dashed border-primary/60 bg-primary/[0.035]"

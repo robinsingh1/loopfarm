@@ -8,7 +8,12 @@ invoking that service binding. This preview currently supports one account.
 The Pi completion hook uses Clef on Workers AI. It requests continue or verify,
 leaves completed work idle, and pauses for blocked or uncertain work. It requires
 no TypeSafe credits. In a new Pi coding chat, use `/loopfarm-judge status`, `on`,
-or `off`. Child subagents are available through pi-subagents.
+or `off`. The Clef panel in an existing Pi chat also controls supervision and
+shows confirmed queued, started, and ended follow-ups from loaded chat history.
+Change settings while the thread is idle; stop active work first if needed.
+The on/off choice survives Pi session resume. Enabling does not restart finished
+work, and the four-follow-up budget resets with a new user request.
+Child subagents are available through pi-subagents.
 
 Pi Autoresearch 1.9.0 is installed in the hosted image. In a dedicated clean
 project checkout, choose a Pi model in a new T3 thread, open Autoresearch,

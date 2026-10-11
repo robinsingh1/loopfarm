@@ -1,3 +1,4 @@
+import { ClefControl } from "../loopfarm/ClefControl";
 import { AppText as Text } from "../../components/AppText";
 import { isAutoresearchTitle } from "@t3tools/client-runtime/operations";
 import { useAtomValue } from "@effect/atom-react";
@@ -1085,6 +1086,10 @@ export const ThreadDetailScreen = memo(function ThreadDetailScreen(props: Thread
 
   return (
     <View className="flex-1">
+      {providerSubagentProvider?.driver === "pi" && !props.providerSubagentStatus && !props.creationState ? (
+        <ClefControl key={selectedThreadKey} environmentId={props.environmentId} thread={props.selectedThread}
+          busy={props.activeThreadBusy} canOperate={props.canOperateThread && props.connectionStateLabel === "connected"} />
+      ) : null}
       {isAutoresearchTitle(props.selectedThread.title) ? (
         <View className="border-b border-border px-4 py-2">
           <Text className="font-t3-medium text-foreground">Autoresearch · Pi + Clef</Text>

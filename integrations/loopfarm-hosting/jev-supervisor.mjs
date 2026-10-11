@@ -28,22 +28,47 @@ export function installSupervisor(pi, client) {
   let request = ""
   let attempts = 0
   let generation = 0
+  let pendingAction = null
+  let activeAction = null
   let researchEvidence
   let status = "waiting for a user request"
   const reset = () => {
     request = ""
     attempts = 0
     researchEvidence = undefined
+    pendingAction = null
+    activeAction = null
     generation++
   }
   const record = (value) => {
     status = value
     pi.appendEntry("loopfarm-jev", { status, attempts })
   }
-  for (const event of ["session_start", "session_switch"]) pi.on(event, reset)
+  const publish = (ctx, event, detail = "") => {
+    ctx.ui.notify(`Clef progress: ${enabled ? "On" : "Off"} · ${attempts}/4 follow-ups requested · ${event}\nStatus: ${status}\n${detail || (enabled ? "Automatic follow-ups enabled." : "Automatic follow-ups disabled.")}`, "info")
+  }
+  for (const event of ["session_start", "session_switch"]) pi.on(event, (_event, ctx) => {
+    reset()
+    const saved = ctx.sessionManager?.getEntries().filter(entry => entry.type === "custom" && entry.customType === "loopfarm-clef-settings").at(-1)
+    enabled = saved?.data?.enabled !== false
+    status = "waiting for a user request"
+  })
+  pi.on("agent_start", (_event, ctx) => {
+    if (ctx.mode !== "rpc") return
+    if (pendingAction) {
+      activeAction = pendingAction
+      pendingAction = null
+      status = `running ${activeAction}`
+      publish(ctx, "started", `Follow-up ${attempts}: ${activeAction}`)
+    } else {
+      publish(ctx, "status")
+    }
+  })
   pi.on("input", (event, ctx) => {
     if (ctx.mode !== "rpc" || event.source === "extension") return
+    if (/^\s*\/loopfarm-(judge|jev)(?:\s|$)/.test(event.text)) return
     reset()
+    status = "waiting for Pi to finish"
     request = event.text.slice(0, 16000)
   })
   const command = {
@@ -54,6 +79,10 @@ export function installSupervisor(pi, client) {
         generation++
       }
       if (args.trim() === "on") enabled = true
+      if (["on", "off"].includes(args.trim())) {
+        pi.appendEntry("loopfarm-clef-settings", { enabled })
+      }
+      publish(ctx, "status")
       ctx.ui.notify(
         `${judge} supervisor ${enabled ? "on" : "off"}; ${client.isConfigured() ? status : "decision gateway unavailable"}; ${attempts}/4 follow-ups.`,
         "info",
@@ -65,7 +94,7 @@ export function installSupervisor(pi, client) {
   const controller = {
     startResearch(text) {
       reset()
-      enabled = true
+      status = "waiting for Pi to finish"
       request = `Pi Autoresearch experiment objective: ${text.slice(0, 16000)}. Judge the bounded objective using actual run_experiment and log_experiment evidence. Honor the iteration limit; do not demand endless optimization.`
     },
     recordResearchExperiment(evidence) {
@@ -76,11 +105,18 @@ export function installSupervisor(pi, client) {
     },
   }
   pi.on("agent_end", async (event, ctx) => {
-    if (!enabled || ctx.mode !== "rpc" || !request || ctx.hasPendingMessages()) return
+    if (ctx.mode !== "rpc") return
+    if (activeAction) {
+      status = "follow-up ended"
+      publish(ctx, "finished", `Follow-up ${attempts}: ${activeAction} ended`)
+      activeAction = null
+    }
+    if (!enabled || !request || ctx.hasPendingMessages()) return
     const assistant = event.messages.filter((m) => m.role === "assistant").at(-1)
     if (!assistant || ["aborted", "error"].includes(assistant.stopReason)) return
     if (!client.isConfigured()) {
       record("unconfigured")
+      publish(ctx, "paused", "Decision service unavailable")
       ctx.ui.notify(
         "Clef decision: paused\nThe decision service is not configured. Automatic follow-ups are paused.",
         "warning",
@@ -89,6 +125,7 @@ export function installSupervisor(pi, client) {
     }
     if (attempts >= 4) {
       record("paused: follow-up limit reached")
+      publish(ctx, "paused", "Four-follow-up limit reached")
       ctx.ui.notify(
         "Clef decision: paused\nThe four-follow-up limit was reached. Review the work and send a new instruction to continue.",
         "warning",
@@ -143,11 +180,16 @@ export function installSupervisor(pi, client) {
       )
       if (!uncertain && prompts[action]) {
         attempts++
+        pendingAction = action
+        publish(ctx, "queued", `${action}: ${explanation}`)
         pi.sendUserMessage(prompts[action], { deliverAs: "followUp" })
+      } else {
+        publish(ctx, uncertain ? "paused" : action, explanation)
       }
     } catch {
       // An unavailable judge is not evidence that the task is complete.
       record("paused: completion judge unavailable or invalid response")
+      publish(ctx, "paused", "Decision service unavailable or invalid response")
       ctx.ui.notify(
         `Clef decision: paused\n${judge} could not return a valid decision. Automatic follow-ups are paused; this does not mean the task is complete.`,
         "warning",
