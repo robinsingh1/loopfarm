@@ -1,4 +1,4 @@
-import { IconRefresh } from "@tabler/icons-react-native"
+import IconRefresh from "@tabler/icons-react-native/IconRefresh"
 import { useAuth } from "@clerk/expo"
 import Constants from "expo-constants"
 import * as Crypto from "expo-crypto"
